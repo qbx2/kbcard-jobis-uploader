@@ -12,6 +12,11 @@ $ pip install -r requirements.txt
 
 It should install pillow and xlrd.
 
+## Usage
+
+1. Run generate.py [breakdown xls file]
+1. Run upload.py [generated directory]
+
 ## URLs
 
 * Kbcard breakdown - https://card.kbcard.com/CXPRIMYS0007.cms
