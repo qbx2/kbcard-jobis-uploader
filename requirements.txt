@@ -1,2 +1,4 @@
+declrest==1.0.3
 pillow
+requests
 xlrd
