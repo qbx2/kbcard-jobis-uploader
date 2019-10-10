@@ -1,3 +1,7 @@
+import argparse
+import datetime
+import os
+
 import requests
 from declrest import endpoint, GET, json_decode, f, read_decode
 
@@ -23,3 +27,31 @@ class JobisAPI:
             'user_token': (None, self.user_token),
         })
         return response.json()
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('receipts_dir')
+    parser.add_argument('--user-index')
+    parser.add_argument('--user-token')
+    args = parser.parse_args()
+
+    api = JobisAPI(args.user_index, args.user_token)
+    last_receipt_datetime = datetime.datetime.strptime(
+        '%Y-%m-%d %H:%M:%S',
+        api.receipt_timeline()['data'][0]['days'][0]['receipts']['pay_time'],
+    )
+
+    for receipt in os.listdir(args.receipts_dir):
+        root, ext = os.path.splitext(receipt)
+        assert ext in ['jpg']
+        image = open(receipt, 'rb')
+        basename, datetime_str = os.path.basename(receipt).split('_', maxsplit=2)
+        receipt_datetime = datetime.datetime.strptime('%Y%m%dT%H%M%S')
+
+        assert receipt_datetime > last_receipt_datetime
+        api.upload(image, receipt, '야근식대' if basename[0] == 'D' else '')
+
+
+if __name__ == '__main__':
+    main()
