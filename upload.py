@@ -18,9 +18,9 @@ class JobisAPI:
     def receipt_timeline(self, *, params):
         pass
 
-    def upload(self, image, notes=''):
+    def upload(self, image, notes='', ext='.jpg'):
         response = requests.post('https://apis.jobis.co/v2.03/upload', files={
-            'receipts': ('Receipts.jpg', image, 'image/jpeg'),
+            'receipts': (f'Receipts{ext}', image, 'image/jpeg'),
             'notes': (None, notes),
             'r_type': (None, 'R'),
             'u_idx': (None, self.user_index),
@@ -32,25 +32,33 @@ class JobisAPI:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('receipts_dir')
-    parser.add_argument('--user-index')
-    parser.add_argument('--user-token')
     args = parser.parse_args()
 
-    api = JobisAPI(args.user_index, args.user_token)
-    last_receipt_datetime = datetime.datetime.strptime(
-        '%Y-%m-%d %H:%M:%S',
-        api.receipt_timeline()['data'][0]['days'][0]['receipts']['pay_time'],
+    api = JobisAPI(os.environ['JOBIS_API_USER_INDEX'], os.environ['JOBIS_API_USER_TOKEN'])
+    receipt_timeline = api.receipt_timeline()
+    last_pay_datetime = max(
+        datetime.datetime.strptime(pay_time, '%Y-%m-%d %H:%M:%S')
+        for pay_time in [
+            receipt['pay_time'] for receipt in sum([
+                day['receipts'] for day in sum([
+                    data['days'] for data in receipt_timeline['data']
+                ], [])
+            ], [])
+        ]
+        if pay_time
     )
+    print(f'last_pay_datetime: {last_pay_datetime}')
 
-    for receipt in os.listdir(args.receipts_dir):
+    for receipt in sorted(os.listdir(args.receipts_dir)):
         root, ext = os.path.splitext(receipt)
-        assert ext in ['jpg']
-        image = open(receipt, 'rb')
-        basename, datetime_str = os.path.basename(receipt).split('_', maxsplit=2)
-        receipt_datetime = datetime.datetime.strptime('%Y%m%dT%H%M%S')
+        assert ext.lower() in ['.jpg', '.png']
 
-        assert receipt_datetime > last_receipt_datetime
-        api.upload(image, receipt, '야근식대' if basename[0] == 'D' else '')
+        datetime_str, basename = os.path.basename(receipt).split('_', maxsplit=2)
+        receipt_datetime = datetime.datetime.strptime(datetime_str, '%Y%m%dT%H%M%S')
+        assert receipt_datetime > last_pay_datetime, f'{receipt_datetime} is too old'
+
+        image = open(f'{args.receipts_dir}/{receipt}', 'rb')
+        print(api.upload(image, notes='야근식대' if basename[0] == 'D' else '', ext=ext))
 
 
 if __name__ == '__main__':
