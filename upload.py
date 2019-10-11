@@ -51,7 +51,10 @@ def main():
 
     for receipt in sorted(os.listdir(args.receipts_dir)):
         root, ext = os.path.splitext(receipt)
-        assert ext.lower() in ['.jpg', '.png']
+
+        if ext.lower() not in ['.jpg', '.png']:
+            print(f'Skip {receipt}')
+            continue
 
         datetime_str, basename = os.path.basename(receipt).split('_', maxsplit=2)
         receipt_datetime = datetime.datetime.strptime(datetime_str, '%Y%m%dT%H%M%S')
